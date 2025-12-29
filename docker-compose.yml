@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: tedtalk-api
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:h2:mem:tedtalksdb
+      SPRING_DATASOURCE_DRIVERCLASSNAME: org.h2.Driver
+      SPRING_DATASOURCE_USERNAME: sa
+      SPRING_DATASOURCE_PASSWORD:
+      SPRING_H2_CONSOLE_ENABLED: 'true'
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.H2Dialect
+      JAVA_OPTS: '-Xmx512m -Xms256m'
+    ports:
+      - "8080:8080"
+
+    # Health check configuration
+    healthcheck:
+      # Use the readiness endpoint for Docker health checks
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health/readiness"]
+      interval: 30s         # Check every 30 seconds
+      timeout: 10s          # Wait max 10 seconds for response
+      retries: 3            # Retry 3 times before marking unhealthy
+      start_period: 60s     # Give app 60 seconds to start before checking
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M

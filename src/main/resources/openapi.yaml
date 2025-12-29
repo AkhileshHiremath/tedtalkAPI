@@ -1,0 +1,211 @@
+openapi: 3.0.3
+info:
+  title: TedTalk API
+  description: REST API for importing and analyzing TedTalk data from CSV files. This API allows you to retrieve TedTalk records that have been imported from the iO Data - Java assessment CSV file.
+  version: edTalk API
+  contact:
+    name: TedX Talk Analyser
+    email: support@tedxtalk-analyser.local
+    url: https://tedxtalk-analyser.local
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: http://localhost:8080
+    description: Development Server
+paths:
+  /api/v1/talks/import:
+    post:
+      summary: Import TED talks data from CSV file
+      operationId: importCsv
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV file containing TED talks data
+      responses:
+        '202':
+          description: CSV import accepted for processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+        '400':
+          description: Invalid file format or bad request
+        '415':
+          description: Unsupported media type
+        '500':
+          description: Internal server error
+  /api/v1/talks/{id}:
+    get:
+      summary: Get TED talk by ID
+      operationId: getTalkById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: TED talk ID
+      responses:
+        '200':
+          description: TED talk found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TedTalk'
+        '404':
+          description: TED talk not found
+  /api/v1/talks/year/{year}:
+    get:
+      summary: Get TED talks by year
+      operationId: getTalksByYear
+      parameters:
+        - name: year
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1984
+            maximum: 9999
+          description: Year
+      responses:
+        '200':
+          description: TED talks retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TedTalk'
+        '404':
+          description: No talks found
+  /api/v1/talks/influence/speakers:
+    get:
+      summary: Get most influential speakers
+      operationId: getMostInfluentialSpeakers
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 5
+          description: Number of speakers to return
+      responses:
+        '200':
+          description: Speaker influence calculated successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InfluentialSpeaker'
+  /api/v1/talks:
+    get:
+      summary: Get all TED talks
+      operationId: getAllTalks
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Page number (0-indexed)
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Page size
+      responses:
+        '200':
+          description: TED talks retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedResponseTedTalk'
+  /api/v1/talks/stats:
+    get:
+      summary: Get TED talks statistics
+      operationId: getStats
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsResponse'
+components:
+  schemas:
+    TedTalk:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        author:
+          type: string
+        date:
+          type: string
+          format: date-time
+        views:
+          type: integer
+          format: int64
+        likes:
+          type: integer
+          format: int64
+        link:
+          type: string
+    ImportResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        count:
+          type: integer
+          format: int64
+    InfluentialSpeaker:
+      type: object
+      properties:
+        author:
+          type: string
+        influenceScore:
+          type: number
+          format: double
+    PagedResponseTedTalk:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TedTalk'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+    StatsResponse:
+      type: object
+      properties:
+        totalTalks:
+          type: integer
+          format: int64
+

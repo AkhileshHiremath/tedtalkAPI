@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tedtalk-api
+  labels:
+    app: tedtalk-api
+    version: v1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: tedtalk-api
+  template:
+    metadata:
+      labels:
+        app: tedtalk-api
+        version: v1
+    spec:
+      containers:
+      - name: tedtalk-api
+        image: tedtalk-api:1.0.0-SNAPSHOT
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+
+        # Environment variables
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "prod"
+        - name: JAVA_OPTS
+          value: "-Xmx512m -Xms256m"
+
+        # Resource limits
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+
+        # ==========================================
+        # LIVENESS PROBE
+        # ==========================================
+        # Checks if the application is running
+        # If this fails, Kubernetes will restart the pod
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 60    # Wait 60s before first check (app startup time)
+          periodSeconds: 10           # Check every 10 seconds
+          timeoutSeconds: 5           # Request timeout
+          successThreshold: 1         # 1 success = healthy
+          failureThreshold: 3         # 3 failures = restart pod
+
+        # ==========================================
+        # READINESS PROBE
+        # ==========================================
+        # Checks if the application is ready to accept traffic
+        # If this fails, Kubernetes removes pod from service load balancer
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 30    # Wait 30s before first check
+          periodSeconds: 5            # Check every 5 seconds
+          timeoutSeconds: 3           # Request timeout
+          successThreshold: 1         # 1 success = ready
+          failureThreshold: 3         # 3 failures = not ready
+
+        # ==========================================
+        # STARTUP PROBE (Optional)
+        # ==========================================
+        # Protects slow-starting containers
+        # Disables liveness/readiness checks until this succeeds
+        startupProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 30       # 30 * 10s = 5 minutes max startup time
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tedtalk-api-service
+  labels:
+    app: tedtalk-api
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: tedtalk-api
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tedtalk-api-nodeport
+  labels:
+    app: tedtalk-api
+spec:
+  type: NodePort
+  ports:
+  - port: 8080
+    targetPort: 8080
+    nodePort: 30080
+    protocol: TCP
+    name: http
+  selector:
+    app: tedtalk-api
+
